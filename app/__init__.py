@@ -1,0 +1,1 @@
+"""CoachOS grounded assistant service."""
