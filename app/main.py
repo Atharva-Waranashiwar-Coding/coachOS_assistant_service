@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
-import time
 from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
@@ -174,7 +172,8 @@ def index(payload: IndexRequest, session: Session = Depends(db)) -> dict[str, st
     chunk = session.scalar(select(Chunk).where(Chunk.stable_key == key))
     values = {"chunk_type": payload.entity_type, "content": payload.content, "embedding": embed(payload.content), "metadata_json": payload.metadata, "organization_id": payload.coach_id, "coach_id": payload.coach_id, "athlete_id": payload.athlete_id, "entity_id": payload.entity_id}
     if chunk:
-        for field, value in values.items(): setattr(chunk, field, value)
+        for field, value in values.items():
+            setattr(chunk, field, value)
     else:
         chunk = Chunk(stable_key=key, **values)
         session.add(chunk)
@@ -189,7 +188,8 @@ def chat(payload: ChatRequest, identity: Identity = Depends(coach), session: Ses
         raise HTTPException(404, "Conversation not found.")
     if not conversation:
         conversation = Conversation(coach_id=identity.id, organization_id=identity.id, title=payload.question[:80])
-        session.add(conversation); session.flush()
+        session.add(conversation)
+        session.flush()
     sources = retrieve(session, identity, payload.question, payload.athlete_id)
     response = answer(payload.question, sources)
     citations = [{"chunk_id": str(chunk.id), "entity_type": chunk.chunk_type, "entity_id": chunk.entity_id, "athlete_id": str(chunk.athlete_id) if chunk.athlete_id else None, "confidence": round(score, 3)} for chunk, score in sources]
@@ -218,13 +218,16 @@ def conversations(identity: Identity = Depends(coach), session: Session = Depend
 @app.get("/api/v1/conversations/{conversation_id}")
 def conversation(conversation_id: UUID, identity: Identity = Depends(coach), session: Session = Depends(db)) -> dict[str, Any]:
     row = session.get(Conversation, conversation_id)
-    if not row or row.coach_id != identity.id: raise HTTPException(404, "Conversation not found.")
+    if not row or row.coach_id != identity.id:
+        raise HTTPException(404, "Conversation not found.")
     return {"id": str(row.id), "title": row.title, "messages": [{"role": item.role, "content": item.content, "citations": item.citations} for item in row.messages]}
 
 
 @app.delete("/api/v1/conversations/{conversation_id}", status_code=204, response_class=Response)
 def archive(conversation_id: UUID, identity: Identity = Depends(coach), session: Session = Depends(db)) -> Response:
     row = session.get(Conversation, conversation_id)
-    if not row or row.coach_id != identity.id: raise HTTPException(404, "Conversation not found.")
-    row.archived_at = datetime.now(UTC); session.commit()
+    if not row or row.coach_id != identity.id:
+        raise HTTPException(404, "Conversation not found.")
+    row.archived_at = datetime.now(UTC)
+    session.commit()
     return Response(status_code=204)
