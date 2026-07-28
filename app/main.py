@@ -151,13 +151,7 @@ def answer(question: str, sources: list[tuple[Chunk, float]]) -> str:
 app = FastAPI(title="CoachOS Assistant Service")
 
 
-@app.on_event("startup")
-def startup() -> None:
-    with engine.begin() as connection:
-        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    Base.metadata.create_all(engine)
-
-
+@app.get("/health")
 @app.get("/health/ready")
 def ready() -> dict[str, str]:
     with engine.connect() as connection:
